@@ -145,7 +145,7 @@ function CaveatsEditor({ value, onChange }) {
         <input
           className="input"
           placeholder="e.g. doesn't apply to people with allergies"
-          autoCapitalize="sentences"
+          autoCapitalize="none"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
