@@ -34,6 +34,11 @@ export default function ReferencesEditor({ references, onChange }) {
           className="input"
           placeholder="https://…"
           value={url}
+          autoCapitalize="none"
+          autoCorrect="off"
+          autoComplete="off"
+          spellCheck="false"
+          inputMode="url"
           onChange={(e) => setUrl(e.target.value)}
         />
         <div className="flex gap-2">
@@ -41,6 +46,7 @@ export default function ReferencesEditor({ references, onChange }) {
             className="input"
             placeholder="Label (optional)"
             value={label}
+            autoCapitalize="sentences"
             onChange={(e) => setLabel(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {

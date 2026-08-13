@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getReplySteps, composeReplyText, checkVague } from "@/lib/claimWizard";
+import { getReplySteps, composeReplyText, isStepValid } from "@/lib/claimWizard";
 import { useIdentity } from "@/components/IdentityProvider";
 import WizardShell from "@/components/wizard/WizardShell";
 import StepField from "@/components/wizard/StepField";
@@ -71,16 +71,7 @@ export default function ReplyPage() {
 
   function canProceed() {
     if (!current) return false;
-    if (current.kind === "field") {
-      const step = current.step;
-      const value = answers[step.key];
-      if (step.type === "caveats") return true;
-      if (!step.required) return true;
-      if (!value || (typeof value === "string" && !value.trim())) return false;
-      if (step.minLength && value.trim().length < step.minLength) return false;
-      if (step.vague && checkVague(value, step.minLength)) return false;
-      return true;
-    }
+    if (current.kind === "field") return isStepValid(current.step, answers);
     if (current.kind === "review") return reviewText.trim().length > 0;
     if (current.kind === "references") return true;
     if (current.kind === "record") return !!media;
@@ -171,7 +162,13 @@ export default function ReplyPage() {
           <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
             Tweak the wording if you like — keep the specifics.
           </p>
-          <textarea className="input" rows={4} value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
+          <textarea
+            className="input"
+            rows={4}
+            value={reviewText}
+            autoCapitalize="sentences"
+            onChange={(e) => setReviewText(e.target.value)}
+          />
         </div>
       )}
 

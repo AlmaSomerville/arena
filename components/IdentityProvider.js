@@ -125,6 +125,8 @@ function NicknameGate({ reason, onSubmit, onClose }) {
           className="input"
           placeholder="Your nickname"
           maxLength={20}
+          autoCapitalize="words"
+          autoCorrect="off"
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />

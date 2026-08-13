@@ -6,7 +6,7 @@ import {
   CLAIM_TYPES,
   getClaimSteps,
   composeDisplayText,
-  checkVague,
+  isStepValid,
 } from "@/lib/claimWizard";
 import { useIdentity } from "@/components/IdentityProvider";
 import WizardShell from "@/components/wizard/WizardShell";
@@ -65,16 +65,7 @@ export default function NewClaimPage() {
 
   function canProceed() {
     if (current.kind === "type") return !!claimType;
-    if (current.kind === "field") {
-      const step = current.step;
-      const value = answers[step.key];
-      if (step.type === "caveats") return true;
-      if (!step.required) return true;
-      if (!value || (typeof value === "string" && !value.trim())) return false;
-      if (step.minLength && value.trim().length < step.minLength) return false;
-      if (step.vague && checkVague(value, step.minLength)) return false;
-      return true;
-    }
+    if (current.kind === "field") return isStepValid(current.step, answers);
     if (current.kind === "review") return reviewText.trim().length > 0;
     if (current.kind === "references") return true;
     if (current.kind === "record") return !!media;
@@ -185,6 +176,7 @@ export default function NewClaimPage() {
             className="input"
             rows={4}
             value={reviewText}
+            autoCapitalize="sentences"
             onChange={(e) => setReviewText(e.target.value)}
           />
           <div className="card p-4 mt-4">
