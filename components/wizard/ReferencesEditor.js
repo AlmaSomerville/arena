@@ -26,7 +26,7 @@ export default function ReferencesEditor({ references, onChange }) {
     <div>
       <h2 className="font-display font-semibold text-xl mb-1.5">Back it up (optional)</h2>
       <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
-        Add as many references as you like — studies, articles, anything. Or none at all.
+        Add as many references as you like, studies, articles, anything. Or none at all.
       </p>
 
       <div className="flex flex-col gap-2 mb-2">

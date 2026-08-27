@@ -14,7 +14,7 @@ export async function GET(req) {
   const filters = parseFilters(searchParams);
   // Comma-separated topic slugs the viewer said they're into. We don't hide
   // anything outside them (a small, early user base can't afford a filtered
-  // feed going empty) — matching claims are just moved to the front,
+  // feed going empty) - matching claims are just moved to the front,
   // preserving the chosen sort order within each group.
   const preferred = (searchParams.get("preferred") || "").split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -53,7 +53,22 @@ export async function POST(req) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { title, topicId, references, mediaUrl, mediaType, mediaDurationSeconds } = body || {};
+  const {
+    title,
+    topicId,
+    references,
+    mediaUrl,
+    mediaType,
+    mediaDurationSeconds,
+    claimType,
+    subjectA,
+    subjectB,
+    direction,
+    dimension,
+    scope,
+    timeframe,
+    caveats,
+  } = body || {};
 
   const trimmedTitle = (title || "").trim();
   if (trimmedTitle.length < 6) {
@@ -77,7 +92,17 @@ export async function POST(req) {
       title: finalTitle,
       arena_name: finalTitle,
       display_text: finalTitle,
-      subject_a: finalTitle, // kept populated for backward-compat with the not-null legacy column
+      // The guided wizard's structured answers, kept alongside the composed
+      // title so a breakdown can be shown on the claim page. All optional,
+      // since not every future posting path may go through the wizard.
+      subject_a: (subjectA || "").trim() || finalTitle, // kept populated for backward-compat with the not-null legacy column
+      subject_b: (subjectB || "").trim() || null,
+      claim_type: claimType || null,
+      direction: direction || null,
+      dimension: (dimension || "").trim() || null,
+      scope: (scope || "").trim() || null,
+      timeframe: (timeframe || "").trim() || null,
+      caveats: Array.isArray(caveats) ? caveats : [],
       media_url: mediaUrl,
       media_type: mediaType || "video",
       media_duration_seconds: mediaDurationSeconds || null,

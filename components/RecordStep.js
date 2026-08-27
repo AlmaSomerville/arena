@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase";
 import MediaPlayer from "@/components/MediaPlayer";
 
-const MAX_SECONDS = 30 * 60; // 30 minutes, as requested — see the storage note in the UI below.
+const MAX_SECONDS = 30 * 60; // 30 minutes, as requested - see the storage note in the UI below.
 
 function pickMimeType(kind) {
   const candidates =
@@ -160,7 +160,7 @@ export default function RecordStep({ mediaType, onMediaTypeChange, value, onChan
     } catch (err) {
       setErrorMsg(
         err?.message?.includes("Bucket not found")
-          ? "Storage bucket \"recordings\" doesn't exist yet in Supabase — see the README setup steps."
+          ? "Storage bucket \"recordings\" doesn't exist yet in Supabase. See the README setup steps."
           : `Upload failed: ${err.message || "unknown error"}`
       );
       setPhase("preview");
@@ -260,7 +260,7 @@ export default function RecordStep({ mediaType, onMediaTypeChange, value, onChan
 
       {(phase === "idle" || phase === "recording") && (
         <p className="text-xs mt-3" style={{ color: "var(--text-faint)" }}>
-          Recordings can run up to 30 minutes. Longer, video recordings use a lot of free storage —
+          Recordings can run up to 30 minutes. Longer, video recordings use a lot of free storage,
           audio and shorter clips leave more room for everyone else&apos;s claims.
         </p>
       )}

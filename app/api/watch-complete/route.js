@@ -4,8 +4,8 @@ import { getServiceClient } from "@/lib/supabase";
 import { UID_COOKIE } from "@/lib/identity";
 
 // Fired once a video has actually played through to the end (no
-// forward-scrubbing allowed on the way there — that's enforced client-side
-// by the player). One point of Rep per unique video, ever — replaying the
+// forward-scrubbing allowed on the way there - that's enforced client-side
+// by the player). One point of Rep per unique video, ever - replaying the
 // same video doesn't farm more points, thanks to the unique(user_id,
 // claim_id) constraint on video_watches, which we lean on here instead of
 // re-checking in application code.
@@ -36,7 +36,7 @@ export async function POST(req) {
     .select()
     .maybeSingle();
   // A duplicate watch (unique_violation, code 23505) just means they've
-  // already gotten credit for this one — not an error worth surfacing.
+  // already gotten credit for this one - not an error worth surfacing.
   if (insertError && insertError.code !== "23505") {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }

@@ -39,7 +39,7 @@ export default function Nav() {
                 border: user ? "none" : "1px solid var(--border)",
               }}
               onDoubleClick={() => requireIdentity("Switch who's playing.")}
-              title={user ? user.nickname : "Guest — tap to join"}
+              title={user ? user.nickname : "Guest, tap to join"}
             >
               {user ? initials(user.nickname) : "?"}
             </button>

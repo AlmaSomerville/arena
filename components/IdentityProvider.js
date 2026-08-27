@@ -117,7 +117,7 @@ function NicknameGate({ reason, onSubmit, onClose }) {
         </div>
         <h2 className="text-lg font-semibold font-display mb-1">Who&apos;s stepping into the arena?</h2>
         <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
-          {reason} No password — just a nickname your friends will recognize. Using one that already
+          {reason} No password, just a nickname your friends will recognize. Using one that already
           exists signs you back in as that person.
         </p>
         <input

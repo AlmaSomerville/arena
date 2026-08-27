@@ -62,7 +62,7 @@ export async function POST(req, { params }) {
 
   // Posting a For/Against response commits you to that team on the argument
   // (if you haven't picked one yet). Posting the opposite of a side you've
-  // already locked in is rejected — Nuance never touches the side-lock.
+  // already locked in is rejected - Nuance never touches the side-lock.
   if (stance === "for" || stance === "against") {
     const { data: existingSide, error: sideLookupError } = await supabase
       .from("argument_sides")
@@ -74,7 +74,7 @@ export async function POST(req, { params }) {
 
     if (existingSide && existingSide.side !== stance) {
       return NextResponse.json(
-        { error: `You're on the ${existingSide.side === "for" ? "For" : "Against"} team for this argument — you can't post an ${stance === "for" ? "For" : "Against"} response.` },
+        { error: `You're on the ${existingSide.side === "for" ? "For" : "Against"} team for this argument. You can't post an ${stance === "for" ? "For" : "Against"} response.` },
         { status: 409 }
       );
     }

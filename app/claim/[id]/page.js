@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import MediaPlayer from "@/components/MediaPlayer";
+import GatedMediaPlayer from "@/components/GatedMediaPlayer";
 import RelativeTime from "@/components/RelativeTime";
 import ClaimCard from "@/components/ClaimCard";
 import FilterBar from "@/components/FilterBar";
@@ -22,8 +22,6 @@ export default function ClaimDetailPage() {
   const [order, setOrder] = useState("highest_voted");
   const [filters, setFilters] = useState([]);
   const [mySide, setMySide] = useState(null);
-  const [sideBusy, setSideBusy] = useState(false);
-  const [sideError, setSideError] = useState("");
 
   useEffect(() => {
     fetch(`/api/claims/${id}`)
@@ -68,28 +66,26 @@ export default function ClaimDetailPage() {
     }
   }, [replies]);
 
+  // Passed down to the gated player, which calls this once someone picks a
+  // side from the end-of-video overlay. Throws on failure so the player can
+  // show the error inline in its own overlay.
   async function pickSide(side) {
-    if (sideBusy || mySide) return;
     const activeUser = user || (await requireIdentity("Pick a nickname to join this argument."));
-    if (!activeUser) return;
+    if (!activeUser) throw new Error("Pick a nickname to join this argument.");
 
-    setSideBusy(true);
-    setSideError("");
-    try {
-      const res = await fetch("/api/argument-sides", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ claimId: id, side }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Couldn't lock that in.");
-      setMySide(data.mySide);
-      setClaim((c) => (c ? { ...c, for_count: data.claim.for_count, against_count: data.claim.against_count } : c));
-    } catch (err) {
-      setSideError(err.message);
-    } finally {
-      setSideBusy(false);
-    }
+    const res = await fetch("/api/argument-sides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claimId: id, side }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Couldn't lock that in.");
+    setMySide(data.mySide);
+    setClaim((c) => (c ? { ...c, for_count: data.claim.for_count, against_count: data.claim.against_count } : c));
+  }
+
+  function scrollToReplies() {
+    document.getElementById("replies-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   if (error) {
@@ -143,8 +139,28 @@ export default function ClaimDetailPage() {
         )}
 
         <div className="mb-4">
-          <MediaPlayer url={claim.media_url} type={claim.media_type} />
+          <GatedMediaPlayer
+            claimId={claim.id}
+            url={claim.media_url}
+            type={claim.media_type}
+            mySide={mySide}
+            onPickSide={pickSide}
+            onSeeReplies={scrollToReplies}
+          />
         </div>
+
+        {(claim.scope || claim.timeframe || claim.caveats?.length > 0) && (
+          <div className="card p-4 mb-2" style={{ background: "var(--bg-elevated)" }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-faint)" }}>
+              Breakdown
+            </p>
+            <dl className="text-sm flex flex-col gap-1.5">
+              {claim.scope && <BreakdownRow label="Applies to" value={claim.scope} />}
+              {claim.timeframe && <BreakdownRow label="Timeframe" value={claim.timeframe} />}
+              {claim.caveats?.length > 0 && <BreakdownRow label="Caveats" value={claim.caveats.join("; ")} />}
+            </dl>
+          </div>
+        )}
 
         {claim.claim_references?.length > 0 && (
           <div className="mt-2 mb-2">
@@ -169,18 +185,7 @@ export default function ClaimDetailPage() {
         )}
 
         <div className="mt-5 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
-          <PickSide
-            forCount={claim.for_count || 0}
-            againstCount={claim.against_count || 0}
-            mySide={mySide}
-            busy={sideBusy}
-            onPick={pickSide}
-          />
-          {sideError && (
-            <p className="text-sm mt-2" style={{ color: "var(--down)" }}>
-              {sideError}
-            </p>
-          )}
+          <StandingBar forCount={claim.for_count || 0} againstCount={claim.against_count || 0} mySide={mySide} />
           <div className="flex items-center gap-4 text-xs mt-3" style={{ color: "var(--text-faint)" }}>
             <span>{claim.reply_count || 0} replies</span>
             <span>{claim.view_count || 0} views</span>
@@ -196,7 +201,7 @@ export default function ClaimDetailPage() {
       </button>
 
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-display font-bold text-lg">
+        <h2 id="replies-heading" className="font-display font-bold text-lg scroll-mt-4">
           {replies ? replies.length : "…"} {replies?.length === 1 ? "Reply" : "Replies"}
         </h2>
       </div>
@@ -214,7 +219,7 @@ export default function ClaimDetailPage() {
       {replies && replies.length === 0 && (
         <div className="card p-8 text-center">
           <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-            No replies yet — be the first to weigh in.
+            No replies yet. Be the first to weigh in.
           </p>
         </div>
       )}
@@ -230,56 +235,49 @@ export default function ClaimDetailPage() {
   );
 }
 
-function PickSide({ forCount, againstCount, mySide, busy, onPick }) {
+function StandingBar({ forCount, againstCount, mySide }) {
   const total = forCount + againstCount;
   const forPct = total > 0 ? Math.round((forCount / total) * 100) : 50;
 
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-faint)" }}>
-        {mySide ? "Your side is locked in" : "Pick a side"}
-      </p>
-      <div className="flex gap-2">
-        <button
-          onClick={() => onPick("for")}
-          disabled={busy || !!mySide}
-          className="flex-1 rounded-xl py-3 text-center transition-colors"
-          style={{
-            border: `1.5px solid ${mySide === "for" ? "var(--up)" : "var(--border)"}`,
-            background: mySide === "for" ? "var(--up-soft)" : "transparent",
-            opacity: mySide && mySide !== "for" ? 0.5 : 1,
-          }}
-        >
-          <span className="block font-display font-bold" style={{ color: "var(--up)" }}>
-            For
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
+          Standing
+        </p>
+        {mySide && (
+          <span className="text-xs font-medium" style={{ color: mySide === "for" ? "var(--up)" : "var(--down)" }}>
+            You: {mySide === "for" ? "For" : "Against"}
           </span>
-          <span className="text-xs" style={{ color: "var(--text-faint)" }}>
-            {forCount} · {forPct}%
-          </span>
-        </button>
-        <button
-          onClick={() => onPick("against")}
-          disabled={busy || !!mySide}
-          className="flex-1 rounded-xl py-3 text-center transition-colors"
-          style={{
-            border: `1.5px solid ${mySide === "against" ? "var(--down)" : "var(--border)"}`,
-            background: mySide === "against" ? "var(--down-soft)" : "transparent",
-            opacity: mySide && mySide !== "against" ? 0.5 : 1,
-          }}
-        >
-          <span className="block font-display font-bold" style={{ color: "var(--down)" }}>
-            Against
-          </span>
-          <span className="text-xs" style={{ color: "var(--text-faint)" }}>
-            {againstCount} · {100 - forPct}%
-          </span>
-        </button>
+        )}
       </div>
-      {mySide && (
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold shrink-0" style={{ color: "var(--up)" }}>
+          {forCount} For
+        </span>
+        <div className="flex-1 h-2 rounded-full overflow-hidden flex" style={{ background: "var(--down-soft)" }}>
+          <div className="h-full" style={{ width: `${forPct}%`, background: "var(--up)" }} />
+        </div>
+        <span className="text-sm font-semibold shrink-0" style={{ color: "var(--down)" }}>
+          {againstCount} Against
+        </span>
+      </div>
+      {!mySide && (
         <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
-          You can still watch both sides — you just can&apos;t vote on the one you didn&apos;t pick.
+          Watch the argument through to the end to pick a side.
         </p>
       )}
+    </div>
+  );
+}
+
+function BreakdownRow({ label, value }) {
+  return (
+    <div className="flex gap-2">
+      <dt className="shrink-0 w-24" style={{ color: "var(--text-faint)" }}>
+        {label}
+      </dt>
+      <dd style={{ color: "var(--text-dim)" }}>{value}</dd>
     </div>
   );
 }

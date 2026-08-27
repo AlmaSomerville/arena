@@ -32,18 +32,18 @@ export async function POST(req) {
   if (claimLookupError) return NextResponse.json({ error: claimLookupError.message }, { status: 500 });
   if (!claim) return NextResponse.json({ error: "That argument no longer exists." }, { status: 404 });
 
-  // Root arguments themselves aren't voted on — you pick a side (For /
+  // Root arguments themselves aren't voted on - you pick a side (For /
   // Against) instead, via /api/argument-sides.
   if (!claim.parent_claim_id) {
     return NextResponse.json(
-      { error: "Root arguments aren't voted on directly — pick a side instead." },
+      { error: "Root arguments aren't voted on directly. Pick a side instead." },
       { status: 400 }
     );
   }
 
   // Nuance responses are exempt from the side-lock and votable by anyone.
   // For/Against responses can only be voted on by someone who has locked in
-  // the matching side on the root argument — this is the "numbing" rule
+  // the matching side on the root argument - this is the "numbing" rule
   // that stops malicious pile-on downvoting from the opposing side.
   if (claim.stance === "for" || claim.stance === "against") {
     const { data: mySide, error: sideError } = await supabase
@@ -62,7 +62,7 @@ export async function POST(req) {
     }
     if (mySide.side !== claim.stance) {
       return NextResponse.json(
-        { error: `You're on the ${mySide.side === "for" ? "For" : "Against"} team — you can watch the ${claim.stance === "for" ? "For" : "Against"} side, but you can't vote on it.` },
+        { error: `You're on the ${mySide.side === "for" ? "For" : "Against"} team. You can watch the ${claim.stance === "for" ? "For" : "Against"} side, but you can't vote on it.` },
         { status: 403 }
       );
     }

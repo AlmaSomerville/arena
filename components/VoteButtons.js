@@ -45,7 +45,7 @@ export default function VoteButtons({ claim, size = "md" }) {
       setMyVote(prevVote);
       setScore(prevScore);
       // Most commonly a 403 from the vote-numbing rule (you're on the other
-      // side of this argument) — surface it briefly instead of failing silently.
+      // side of this argument) - surface it briefly instead of failing silently.
       if (err.message) {
         setNotice(err.message);
         setTimeout(() => setNotice(""), 3500);

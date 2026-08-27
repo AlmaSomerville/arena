@@ -12,7 +12,7 @@ const SCREENS = ["details", "references", "record"];
 const STANCES = [
   { id: "for", label: "For", hint: "Backs the root argument", color: "var(--up)" },
   { id: "against", label: "Against", hint: "Pushes back on it", color: "var(--down)" },
-  { id: "nuance", label: "Add nuance", hint: "Caveat or complication — visible to everyone", color: "var(--accent)" },
+  { id: "nuance", label: "Add nuance", hint: "Caveat or complication, visible to everyone", color: "var(--accent)" },
 ];
 
 export default function ReplyPage() {

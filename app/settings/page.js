@@ -10,7 +10,7 @@ import { getPreferredTopics, setPreferredTopics, getSkipTopicPrompt, setSkipTopi
 export default function SettingsPage() {
   const { user, requireIdentity } = useIdentity();
 
-  // Seeded from localStorage via lazy initializers rather than an effect —
+  // Seeded from localStorage via lazy initializers rather than an effect -
   // this is a one-time read of an external value at mount, not a
   // subscription, and the app never server-renders this page for a real
   // visitor (it's always behind the identity gate below on first load).
@@ -66,23 +66,18 @@ export default function SettingsPage() {
         <div className="min-w-0 flex-1">
           <p className="font-display font-semibold text-lg truncate">{user.nickname}</p>
           <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-            No password — just this nickname
+            No password, just this nickname
           </p>
         </div>
       </div>
 
       <div className="card p-5 mb-6">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
-            Rep
-          </p>
-          <span className="badge" style={{ background: "var(--accent-soft)", color: "#d6cbff" }}>
-            Bit like Reddit Karma
-          </span>
-        </div>
+        <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "var(--text-faint)" }}>
+          Rep
+        </p>
         <p className="font-display font-bold text-4xl tabular-nums mb-1">{user.rep ?? 0}</p>
         <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-          +1 for every argument you watch through to the end. Simple for now — the rules may get richer later.
+          +1 for every argument you watch through to the end. Simple for now, the rules may get richer later.
         </p>
       </div>
 
@@ -91,7 +86,7 @@ export default function SettingsPage() {
           What you feel like browsing
         </p>
         <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
-          Pick up to {MAX_PREFERRED_TOPICS}. Your feed still shows everything — these just get bumped to the front.
+          Pick up to {MAX_PREFERRED_TOPICS}. Your feed still shows everything, these just get bumped to the front.
         </p>
         <div className="flex flex-wrap gap-2 mb-1">
           {TOPICS.map((t) => {

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getServiceClient } from "@/lib/supabase";
 import { UID_COOKIE } from "@/lib/identity";
 
-// Picking a side on a root argument is a one-time, permanent commitment —
+// Picking a side on a root argument is a one-time, permanent commitment -
 // it's what lets us "numb" (block) someone from voting on the responses
 // belonging to the side they didn't pick, without hiding those responses
 // from view. Nuance responses never touch this table.
@@ -49,7 +49,7 @@ export async function POST(req) {
 
   if (existing && existing.side !== side) {
     return NextResponse.json(
-      { error: `You already picked ${existing.side === "for" ? "For" : "Against"} on this argument — that choice is locked in.` },
+      { error: `You already picked ${existing.side === "for" ? "For" : "Against"} on this argument. That choice is locked in.` },
       { status: 409 }
     );
   }
