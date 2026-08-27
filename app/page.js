@@ -85,8 +85,8 @@ export default function FeedPage() {
         </div>
       )}
 
-      {claims && claims.length > 0 && (
-        <div className="flex flex-col gap-1">
+      {claims && claims.length > 0 && !showPrompt && (
+        <div className="flex flex-col gap-6">
           {claims.map((c) => (
             <FeedThumbnailCard key={c.id} claim={c} />
           ))}

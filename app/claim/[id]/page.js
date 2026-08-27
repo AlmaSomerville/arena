@@ -10,6 +10,7 @@ import FilterBar from "@/components/FilterBar";
 import ViewTracker from "@/components/ViewTracker";
 import { useIdentity } from "@/components/IdentityProvider";
 import { initials } from "@/lib/identity";
+import { scoreTier } from "@/lib/scoreTiers";
 
 export default function ClaimDetailPage() {
   const { id } = useParams();
@@ -105,6 +106,7 @@ export default function ClaimDetailPage() {
 
   const author = claim.users;
   const topicLabel = claim.topics?.label;
+  const tier = scoreTier((claim.for_count || 0) + (claim.against_count || 0));
 
   return (
     <div>
@@ -124,11 +126,19 @@ export default function ClaimDetailPage() {
               · <RelativeTime date={claim.created_at} />
             </span>
           </div>
-          {topicLabel && (
-            <span className="badge shrink-0" style={{ background: "var(--accent-soft)", color: "#d6cbff" }}>
-              {topicLabel}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span
+              className="badge"
+              style={{ background: tier.bg, color: tier.color }}
+            >
+              {tier.label}
             </span>
-          )}
+            {topicLabel && (
+              <span className="badge" style={{ background: "var(--accent-soft)", color: "#d6cbff" }}>
+                {topicLabel}
+              </span>
+            )}
+          </div>
         </div>
 
         <h1 className="font-display font-bold text-2xl leading-snug mb-2">{claim.arena_name}</h1>
