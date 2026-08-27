@@ -233,7 +233,7 @@ export default function NewClaimPage() {
                   style={{
                     border: "1px solid " + (topicId === t.id ? "var(--accent)" : "var(--border)"),
                     background: topicId === t.id ? "var(--accent-soft)" : "transparent",
-                    color: topicId === t.id ? "#d6cbff" : "var(--text-dim)",
+                    color: topicId === t.id ? "var(--accent-soft-text)" : "var(--text-dim)",
                   }}
                 >
                   {t.label}

@@ -128,13 +128,17 @@ export default function ClaimDetailPage() {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <span
-              className="badge"
-              style={{ background: tier.bg, color: tier.color }}
+              className={"badge" + (tier.glow ? " font-bold" : "")}
+              style={{
+                background: tier.bg,
+                color: tier.color,
+                boxShadow: tier.glow ? `0 0 0 1px ${tier.glow}, 0 2px 14px 0 ${tier.glow}` : undefined,
+              }}
             >
               {tier.label}
             </span>
             {topicLabel && (
-              <span className="badge" style={{ background: "var(--accent-soft)", color: "#d6cbff" }}>
+              <span className="badge" style={{ background: "var(--accent-soft)", color: "var(--accent-soft-text)" }}>
                 {topicLabel}
               </span>
             )}

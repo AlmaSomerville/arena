@@ -21,9 +21,18 @@ export const viewport = {
   maximumScale: 1,
 };
 
+// Reads the saved theme preference and applies it to <html> before first
+// paint, so a manual Light or Dark choice doesn't flash the system default
+// for a frame. Kept as a tiny inline script (not a lazy useState initializer)
+// because it has to run before React hydrates anything at all.
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("arena_theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
         <IdentityProvider>
           <div className="min-h-dvh flex flex-col">

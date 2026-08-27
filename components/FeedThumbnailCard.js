@@ -67,8 +67,16 @@ function Thumbnail({ claim, duration, tier }) {
   return (
     <div className="relative w-full aspect-video rounded-xl overflow-hidden" style={{ background: "#000" }}>
       <span
-        className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md z-10"
-        style={{ background: tier.bg, color: tier.color, backdropFilter: "blur(4px)" }}
+        className={
+          "absolute top-2 left-2 font-bold uppercase tracking-wide rounded-md z-10 " +
+          (tier.glow ? "text-[11px] px-2.5 py-1.5" : "text-[10px] px-2 py-1")
+        }
+        style={{
+          background: tier.bg,
+          color: tier.color,
+          backdropFilter: "blur(4px)",
+          boxShadow: tier.glow ? `0 0 0 1px ${tier.glow}, 0 2px 14px 0 ${tier.glow}` : undefined,
+        }}
       >
         {tier.label}
       </span>

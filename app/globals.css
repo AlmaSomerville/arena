@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Dark is the default look (bare :root), matching the original design.
+   Light overrides apply either when the system prefers light and the user
+   hasn't explicitly forced dark, or when the user has explicitly chosen
+   light in Settings ([data-theme="light"]). An explicit [data-theme="dark"]
+   block lets a manual choice win back over a light system preference. */
 :root {
   --bg: #0b0b12;
   --bg-elevated: #131320;
@@ -14,14 +19,101 @@
   --accent: #7c5cff;
   --accent-2: #ff5c87;
   --accent-soft: rgba(124, 92, 255, 0.16);
+  --accent-soft-text: #d6cbff;
   --up: #22c7b5;
   --up-soft: rgba(34, 199, 181, 0.14);
   --down: #ff5c6a;
   --down-soft: rgba(255, 92, 106, 0.14);
 
+  --grad-1: rgba(124, 92, 255, 0.18);
+  --grad-2: rgba(255, 92, 135, 0.12);
+
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 10px;
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 20px 60px -20px rgba(124, 92, 255, 0.45);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f4f4f9;
+    --bg-elevated: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f6f6fb;
+    --border: rgba(20, 20, 40, 0.09);
+    --border-strong: rgba(20, 20, 40, 0.18);
+    --text: #16161f;
+    --text-dim: #4d4d5f;
+    --text-faint: #83839a;
+
+    --accent: #6a3bff;
+    --accent-2: #e0355f;
+    --accent-soft: rgba(106, 59, 255, 0.1);
+    --accent-soft-text: #5732d6;
+    --up: #0c9484;
+    --up-soft: rgba(12, 148, 132, 0.12);
+    --down: #d81f3d;
+    --down-soft: rgba(216, 31, 61, 0.1);
+
+    --grad-1: rgba(124, 92, 255, 0.1);
+    --grad-2: rgba(255, 92, 135, 0.08);
+
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 10px 30px -16px rgba(20, 20, 40, 0.18);
+    --shadow-pop: 0 20px 60px -24px rgba(106, 59, 255, 0.35);
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f4f9;
+  --bg-elevated: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f6f6fb;
+  --border: rgba(20, 20, 40, 0.09);
+  --border-strong: rgba(20, 20, 40, 0.18);
+  --text: #16161f;
+  --text-dim: #4d4d5f;
+  --text-faint: #83839a;
+
+  --accent: #6a3bff;
+  --accent-2: #e0355f;
+  --accent-soft: rgba(106, 59, 255, 0.1);
+  --accent-soft-text: #5732d6;
+  --up: #0c9484;
+  --up-soft: rgba(12, 148, 132, 0.12);
+  --down: #d81f3d;
+  --down-soft: rgba(216, 31, 61, 0.1);
+
+  --grad-1: rgba(124, 92, 255, 0.1);
+  --grad-2: rgba(255, 92, 135, 0.08);
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 10px 30px -16px rgba(20, 20, 40, 0.18);
+  --shadow-pop: 0 20px 60px -24px rgba(106, 59, 255, 0.35);
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b0b12;
+  --bg-elevated: #131320;
+  --bg-card: #15151f;
+  --bg-card-hover: #1b1b29;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #f4f3f9;
+  --text-dim: #a6a3b8;
+  --text-faint: #6f6c82;
+
+  --accent: #7c5cff;
+  --accent-2: #ff5c87;
+  --accent-soft: rgba(124, 92, 255, 0.16);
+  --accent-soft-text: #d6cbff;
+  --up: #22c7b5;
+  --up-soft: rgba(34, 199, 181, 0.14);
+  --down: #ff5c6a;
+  --down-soft: rgba(255, 92, 106, 0.14);
+
+  --grad-1: rgba(124, 92, 255, 0.18);
+  --grad-2: rgba(255, 92, 135, 0.12);
 
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 10px 30px -12px rgba(0, 0, 0, 0.6);
   --shadow-pop: 0 20px 60px -20px rgba(124, 92, 255, 0.45);
@@ -41,12 +133,18 @@
 }
 
 html {
+  color-scheme: light dark;
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
   color-scheme: dark;
 }
 
 body {
-  background: radial-gradient(1200px 800px at 15% -10%, rgba(124, 92, 255, 0.18), transparent 55%),
-    radial-gradient(1000px 700px at 110% 10%, rgba(255, 92, 135, 0.12), transparent 50%), var(--bg);
+  background: radial-gradient(1200px 800px at 15% -10%, var(--grad-1), transparent 55%),
+    radial-gradient(1000px 700px at 110% 10%, var(--grad-2), transparent 50%), var(--bg);
   background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -125,7 +223,7 @@ h1, h2, h3, h4, .font-display {
 .btn-ghost.active {
   background: var(--accent-soft);
   border-color: rgba(124, 92, 255, 0.5);
-  color: #d6cbff;
+  color: var(--accent-soft-text);
 }
 
 .input {

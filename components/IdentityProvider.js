@@ -111,7 +111,7 @@ function NicknameGate({ reason, onSubmit, onClose }) {
       >
         <div
           className="w-11 h-11 rounded-full flex items-center justify-center font-display font-bold mb-4"
-          style={{ background: "var(--accent-soft)", color: "#d6cbff" }}
+          style={{ background: "var(--accent-soft)", color: "var(--accent-soft-text)" }}
         >
           {value ? initials(value) : "?"}
         </div>

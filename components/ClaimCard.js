@@ -59,7 +59,7 @@ export default function ClaimCard({ claim, compact = false, linkable = true, id 
             {stance.label}
           </span>
         ) : topicLabel ? (
-          <span className="badge shrink-0" style={{ background: "var(--accent-soft)", color: "#d6cbff" }}>
+          <span className="badge shrink-0" style={{ background: "var(--accent-soft)", color: "var(--accent-soft-text)" }}>
             {topicLabel}
           </span>
         ) : null}

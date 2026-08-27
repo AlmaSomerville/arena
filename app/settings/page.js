@@ -5,7 +5,20 @@ import Link from "next/link";
 import { useIdentity } from "@/components/IdentityProvider";
 import { initials } from "@/lib/identity";
 import { TOPICS, MAX_PREFERRED_TOPICS } from "@/lib/topics";
-import { getPreferredTopics, setPreferredTopics, getSkipTopicPrompt, setSkipTopicPrompt } from "@/lib/preferences";
+import {
+  getPreferredTopics,
+  setPreferredTopics,
+  getSkipTopicPrompt,
+  setSkipTopicPrompt,
+  getTheme,
+  setTheme,
+} from "@/lib/preferences";
+
+const THEME_OPTIONS = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
 
 export default function SettingsPage() {
   const { user, requireIdentity } = useIdentity();
@@ -16,7 +29,13 @@ export default function SettingsPage() {
   // visitor (it's always behind the identity gate below on first load).
   const [topics, setTopics] = useState(() => getPreferredTopics());
   const [askEveryTime, setAskEveryTime] = useState(() => !getSkipTopicPrompt());
+  const [theme, setThemeState] = useState(() => getTheme());
   const [saved, setSaved] = useState(false);
+
+  function handleThemeChange(value) {
+    setThemeState(value);
+    setTheme(value);
+  }
 
   function toggleTopic(slug) {
     setSaved(false);
@@ -73,6 +92,33 @@ export default function SettingsPage() {
 
       <div className="card p-5 mb-6">
         <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "var(--text-faint)" }}>
+          Appearance
+        </p>
+        <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
+          Switch between light and dark, or follow your device.
+        </p>
+        <div className="flex gap-1.5 p-1 rounded-full" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+          {THEME_OPTIONS.map((opt) => {
+            const active = theme === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => handleThemeChange(opt.value)}
+                className="flex-1 py-2 rounded-full text-sm font-medium transition-colors"
+                style={{
+                  background: active ? "var(--accent)" : "transparent",
+                  color: active ? "white" : "var(--text-dim)",
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="card p-5 mb-6">
+        <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "var(--text-faint)" }}>
           Rep
         </p>
         <p className="font-display font-bold text-4xl tabular-nums mb-1">{user.rep ?? 0}</p>
@@ -101,7 +147,7 @@ export default function SettingsPage() {
                 style={{
                   border: "1px solid " + (active ? "var(--accent)" : "var(--border)"),
                   background: active ? "var(--accent-soft)" : "transparent",
-                  color: active ? "#d6cbff" : disabled ? "var(--text-faint)" : "var(--text-dim)",
+                  color: active ? "var(--accent-soft-text)" : disabled ? "var(--text-faint)" : "var(--text-dim)",
                   opacity: disabled ? 0.5 : 1,
                 }}
               >

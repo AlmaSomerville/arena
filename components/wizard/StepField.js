@@ -35,7 +35,7 @@ function Field({ claimType, fieldId, answers, onChange }) {
               style={{
                 border: `1.5px solid ${answers[fieldId] === opt.value ? "var(--accent)" : "var(--border)"}`,
                 background: answers[fieldId] === opt.value ? "var(--accent-soft)" : "transparent",
-                color: answers[fieldId] === opt.value ? "#d6cbff" : "var(--text-dim)",
+                color: answers[fieldId] === opt.value ? "var(--accent-soft-text)" : "var(--text-dim)",
               }}
             >
               {opt.label}

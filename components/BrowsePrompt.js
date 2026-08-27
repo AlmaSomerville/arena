@@ -1,24 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { TOPICS, MAX_PREFERRED_TOPICS, BROWSE_PROMPTS } from "@/lib/topics";
-import { setPreferredTopics, setSkipTopicPrompt } from "@/lib/preferences";
+import { setPreferredTopics, setSkipTopicPrompt, nextBrowsePromptIndex } from "@/lib/preferences";
 
-// The calm, animated "what do you feel like browsing?" prompt shown on
-// startup (unless turned off here or in Settings). Picking topics here
-// soft prioritizes the feed rather than filtering it, so it never leaves
-// anyone staring at an empty page.
+// The calm "what do you feel like browsing?" prompt shown on startup
+// (unless turned off here or in Settings). Picking topics here soft
+// prioritizes the feed rather than filtering it, so it never leaves anyone
+// staring at an empty page.
+//
+// The headline phrase is picked once, when the modal opens, via a lazy
+// initializer, not on a timer while it's open. It used to rotate every
+// 3.2s for as long as the modal was mounted, which re-rendered the whole
+// modal (pills included) on an interval, and reads as the prompt "sticking"
+// or the pills briefly dimming rather than a nice animated touch. It now
+// stays put for the duration of one viewing, and the persisted rotation
+// counter still varies which phrase you see across separate app opens.
 export default function BrowsePrompt({ initialTopics, onSet, onDismiss }) {
-  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [phraseIndex] = useState(() => nextBrowsePromptIndex(BROWSE_PROMPTS.length));
   const [selected, setSelected] = useState(initialTopics || []);
   const [dontAsk, setDontAsk] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPhraseIndex((i) => (i + 1) % BROWSE_PROMPTS.length);
-    }, 3200);
-    return () => clearInterval(interval);
-  }, []);
 
   function toggleTopic(slug) {
     setSelected((current) => {
@@ -68,7 +69,7 @@ export default function BrowsePrompt({ initialTopics, onSet, onDismiss }) {
                 style={{
                   border: "1px solid " + (active ? "var(--accent)" : "var(--border)"),
                   background: active ? "var(--accent-soft)" : "transparent",
-                  color: active ? "#d6cbff" : disabled ? "var(--text-faint)" : "var(--text-dim)",
+                  color: active ? "var(--accent-soft-text)" : disabled ? "var(--text-faint)" : "var(--text-dim)",
                   opacity: disabled ? 0.45 : 1,
                 }}
               >
