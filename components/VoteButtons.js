@@ -7,6 +7,7 @@ export default function VoteButtons({ claim, size = "md" }) {
   const { user, requireIdentity } = useIdentity();
   const [score, setScore] = useState(claim.score ?? 0);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
 
   const initialVote = useMemo(() => {
     if (!user || !claim.votes) return 0;
@@ -21,6 +22,7 @@ export default function VoteButtons({ claim, size = "md" }) {
     const activeUser = user || (await requireIdentity("Pick a nickname to vote."));
     if (!activeUser) return;
 
+    setNotice("");
     const prevVote = myVote;
     const prevScore = score;
     const nextVote = prevVote === value ? 0 : value;
@@ -39,9 +41,15 @@ export default function VoteButtons({ claim, size = "md" }) {
       if (!res.ok) throw new Error(data.error);
       setScore(data.claim.score);
       setMyVote(data.myVote);
-    } catch {
+    } catch (err) {
       setMyVote(prevVote);
       setScore(prevScore);
+      // Most commonly a 403 from the vote-numbing rule (you're on the other
+      // side of this argument) — surface it briefly instead of failing silently.
+      if (err.message) {
+        setNotice(err.message);
+        setTimeout(() => setNotice(""), 3500);
+      }
     } finally {
       setBusy(false);
     }
@@ -50,7 +58,16 @@ export default function VoteButtons({ claim, size = "md" }) {
   const dim = size === "lg" ? "w-10 h-10 text-lg" : "w-8 h-8 text-base";
 
   return (
-    <div className="flex items-center gap-1.5 select-none">
+    <div className="relative select-none">
+      {notice && (
+        <div
+          className="absolute bottom-full left-0 mb-2 px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap fade-in z-10"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
+        >
+          {notice}
+        </div>
+      )}
+      <div className="flex items-center gap-1.5">
       <button
         aria-label="Upvote"
         onClick={(e) => {
@@ -89,6 +106,7 @@ export default function VoteButtons({ claim, size = "md" }) {
       >
         ▼
       </button>
+      </div>
     </div>
   );
 }

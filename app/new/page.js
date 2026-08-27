@@ -1,50 +1,41 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  CLAIM_TYPES,
-  getClaimSteps,
-  composeDisplayText,
-  isStepValid,
-} from "@/lib/claimWizard";
 import { useIdentity } from "@/components/IdentityProvider";
 import WizardShell from "@/components/wizard/WizardShell";
-import StepField from "@/components/wizard/StepField";
 import ReferencesEditor from "@/components/wizard/ReferencesEditor";
 import RecordStep from "@/components/RecordStep";
+
+const SCREENS = ["details", "references", "record"];
 
 export default function NewClaimPage() {
   const router = useRouter();
   const { user, requireIdentity } = useIdentity();
 
-  const [claimType, setClaimType] = useState(null);
-  const [answers, setAnswers] = useState({ caveats: [] });
+  const [topics, setTopics] = useState(null);
+  const [topicsError, setTopicsError] = useState("");
+  const [topicId, setTopicId] = useState(null);
+  const [title, setTitle] = useState("");
   const [screenIndex, setScreenIndex] = useState(0);
-  const [reviewText, setReviewText] = useState("");
-  const [reviewInitialized, setReviewInitialized] = useState(false);
   const [references, setReferences] = useState([]);
-  const [mediaKind, setMediaKind] = useState("audio");
+  const [mediaKind, setMediaKind] = useState("video");
   const [media, setMedia] = useState(null);
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState("");
 
-  const fieldSteps = useMemo(() => (claimType ? getClaimSteps(claimType) : []), [claimType]);
+  useEffect(() => {
+    fetch("/api/topics")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.error) setTopicsError(d.error);
+        else setTopics(d.topics);
+      })
+      .catch(() => setTopicsError("Couldn't load topics."));
+  }, []);
 
-  const screens = useMemo(() => {
-    const s = [{ kind: "type" }];
-    fieldSteps.forEach((step) => s.push({ kind: "field", step }));
-    s.push({ kind: "review" });
-    s.push({ kind: "references" });
-    s.push({ kind: "record" });
-    return s;
-  }, [fieldSteps]);
-
-  const current = screens[screenIndex];
-
-  function updateAnswer(key, val) {
-    setAnswers((a) => ({ ...a, [key]: val }));
-  }
+  const current = SCREENS[screenIndex];
+  const titleValid = title.trim().length >= 6;
 
   function goBack() {
     if (screenIndex === 0) {
@@ -54,21 +45,10 @@ export default function NewClaimPage() {
     setScreenIndex((i) => Math.max(i - 1, 0));
   }
 
-  function enterScreen(nextIndex) {
-    const next = screens[nextIndex];
-    if (next?.kind === "review" && !reviewInitialized) {
-      setReviewText(composeDisplayText(claimType, answers));
-      setReviewInitialized(true);
-    }
-    setScreenIndex(nextIndex);
-  }
-
   function canProceed() {
-    if (current.kind === "type") return !!claimType;
-    if (current.kind === "field") return isStepValid(current.step, answers);
-    if (current.kind === "review") return reviewText.trim().length > 0;
-    if (current.kind === "references") return true;
-    if (current.kind === "record") return !!media;
+    if (current === "details") return titleValid && !!topicId;
+    if (current === "references") return true;
+    if (current === "record") return !!media;
     return true;
   }
 
@@ -83,15 +63,8 @@ export default function NewClaimPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          claimType,
-          subjectA: answers.subjectA,
-          subjectB: answers.subjectB,
-          direction: answers.direction,
-          dimension: answers.dimension,
-          scope: answers.scope,
-          timeframe: answers.timeframe,
-          caveats: answers.caveats || [],
-          displayText: reviewText,
+          title,
+          topicId,
           references,
           mediaUrl: media.mediaUrl,
           mediaType: media.mediaType,
@@ -110,11 +83,11 @@ export default function NewClaimPage() {
   return (
     <WizardShell
       step={screenIndex}
-      totalSteps={screens.length}
+      totalSteps={SCREENS.length}
       onBack={goBack}
       footer={
-        current.kind !== "record" ? (
-          <button onClick={() => enterScreen(screenIndex + 1)} disabled={!canProceed()} className="btn btn-primary w-full py-3.5">
+        current !== "record" ? (
+          <button onClick={() => setScreenIndex((i) => i + 1)} disabled={!canProceed()} className="btn btn-primary w-full py-3.5">
             Continue
           </button>
         ) : media ? (
@@ -131,74 +104,68 @@ export default function NewClaimPage() {
         ) : null
       }
     >
-      {current.kind === "type" && (
+      {current === "details" && (
         <div>
-          <h2 className="font-display font-semibold text-xl mb-1.5">What kind of claim is this?</h2>
+          <h2 className="font-display font-semibold text-xl mb-1.5">Stake your claim</h2>
           <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
-            This decides which questions we&apos;ll ask so your claim comes out specific and debatable.
+            Give it a short, specific title, then pick the topic it belongs under. Your recording is where you
+            actually make the case.
           </p>
-          <div className="flex flex-col gap-2.5">
-            {CLAIM_TYPES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setClaimType(t.id)}
-                className={`card card-hover text-left p-4 ${claimType === t.id ? "" : ""}`}
-                style={{
-                  borderColor: claimType === t.id ? "var(--accent)" : "var(--border)",
-                  background: claimType === t.id ? "var(--accent-soft)" : undefined,
-                }}
-              >
-                <p className="font-display font-semibold mb-0.5">{t.label}</p>
-                <p className="text-sm mb-1.5" style={{ color: "var(--text-dim)" }}>
-                  {t.tagline}
-                </p>
-                <p className="text-xs italic" style={{ color: "var(--text-faint)" }}>
-                  {t.example}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {current.kind === "field" && (
-        <StepField step={current.step} answers={answers} onChange={updateAnswer} />
-      )}
-
-      {current.kind === "review" && (
-        <div>
-          <h2 className="font-display font-semibold text-xl mb-1.5">Here&apos;s your claim</h2>
-          <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
-            We built this from your answers so it&apos;s specific and scoped. Feel free to smooth the wording —
-            just don&apos;t undo the specifics.
-          </p>
-          <textarea
-            className="input"
-            rows={4}
-            value={reviewText}
+          <label className="text-xs font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: "var(--text-faint)" }}>
+            Title
+          </label>
+          <input
+            className="input mb-1"
+            placeholder="e.g. Remote work makes teams less creative"
+            maxLength={140}
             autoCapitalize="sentences"
-            onChange={(e) => setReviewText(e.target.value)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
-          <div className="card p-4 mt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-faint)" }}>
-              Breakdown
+          <p className="text-xs mb-5" style={{ color: "var(--text-faint)" }}>
+            {title.trim().length}/140 · at least 6 characters
+          </p>
+
+          <label className="text-xs font-semibold uppercase tracking-wide mb-2 block" style={{ color: "var(--text-faint)" }}>
+            Topic
+          </label>
+          {topicsError && (
+            <p className="text-sm" style={{ color: "var(--down)" }}>
+              {topicsError}
             </p>
-            <dl className="text-sm flex flex-col gap-1.5">
-              <Row label="Applies to" value={answers.scope} />
-              {answers.timeframe && <Row label="Timeframe" value={answers.timeframe} />}
-              {(answers.caveats || []).length > 0 && (
-                <Row label="Caveats" value={answers.caveats.join("; ")} />
-              )}
-            </dl>
-          </div>
+          )}
+          {!topics && !topicsError && (
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-9 w-24 rounded-full animate-pulse" style={{ background: "var(--bg-elevated)" }} />
+              ))}
+            </div>
+          )}
+          {topics && (
+            <div className="flex flex-wrap gap-2">
+              {topics.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTopicId(t.id)}
+                  className="px-3.5 py-2 rounded-full text-sm font-medium transition-colors"
+                  style={{
+                    border: "1px solid " + (topicId === t.id ? "var(--accent)" : "var(--border)"),
+                    background: topicId === t.id ? "var(--accent-soft)" : "transparent",
+                    color: topicId === t.id ? "#d6cbff" : "var(--text-dim)",
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {current.kind === "references" && (
-        <ReferencesEditor references={references} onChange={setReferences} />
-      )}
+      {current === "references" && <ReferencesEditor references={references} onChange={setReferences} />}
 
-      {current.kind === "record" && (
+      {current === "record" && (
         <div>
           <h2 className="font-display font-semibold text-xl mb-1.5">Record it</h2>
           <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
@@ -208,16 +175,5 @@ export default function NewClaimPage() {
         </div>
       )}
     </WizardShell>
-  );
-}
-
-function Row({ label, value }) {
-  return (
-    <div className="flex gap-2">
-      <dt className="shrink-0 w-24" style={{ color: "var(--text-faint)" }}>
-        {label}
-      </dt>
-      <dd style={{ color: "var(--text-dim)" }}>{value}</dd>
-    </div>
   );
 }

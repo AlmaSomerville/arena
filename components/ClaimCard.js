@@ -6,16 +6,10 @@ import MediaPlayer from "@/components/MediaPlayer";
 import RelativeTime from "@/components/RelativeTime";
 import { initials } from "@/lib/identity";
 
-const TYPE_LABEL = {
-  comparative: "Comparison",
-  superlative: "Best / Worst",
-  assertion: "Claim",
-};
-
 const STANCE_STYLE = {
-  support: { label: "Backs it up", color: "var(--up)", bg: "var(--up-soft)" },
-  challenge: { label: "Pushes back", color: "var(--down)", bg: "var(--down-soft)" },
-  nuance: { label: "Adds nuance", color: "#ffb03b", bg: "rgba(255,176,59,0.14)" },
+  for: { label: "For", color: "var(--up)", bg: "var(--up-soft)" },
+  against: { label: "Against", color: "var(--down)", bg: "var(--down-soft)" },
+  nuance: { label: "Nuance", color: "#ffb03b", bg: "rgba(255,176,59,0.14)" },
 };
 
 export default function ClaimCard({ claim, compact = false, linkable = true, id }) {
@@ -23,6 +17,7 @@ export default function ClaimCard({ claim, compact = false, linkable = true, id 
   const author = claim.users;
   const isReply = !!claim.parent_claim_id;
   const stance = isReply ? STANCE_STYLE[claim.stance] : null;
+  const topicLabel = claim.topics?.label;
 
   function goToClaim() {
     if (!linkable) return;
@@ -63,20 +58,22 @@ export default function ClaimCard({ claim, compact = false, linkable = true, id 
           <span className="badge shrink-0" style={{ background: stance.bg, color: stance.color }}>
             {stance.label}
           </span>
-        ) : (
+        ) : topicLabel ? (
           <span className="badge shrink-0" style={{ background: "var(--accent-soft)", color: "#d6cbff" }}>
-            {TYPE_LABEL[claim.claim_type]}
+            {topicLabel}
           </span>
-        )}
+        ) : null}
       </div>
 
       <h3 className="font-display font-bold text-[1.05rem] leading-snug mb-1.5">{claim.arena_name}</h3>
-      <p
-        className={`text-sm leading-relaxed mb-3 ${compact ? "line-clamp-2" : "line-clamp-3"}`}
-        style={{ color: "var(--text-dim)" }}
-      >
-        {claim.display_text}
-      </p>
+      {claim.display_text && claim.display_text !== claim.arena_name && (
+        <p
+          className={`text-sm leading-relaxed mb-3 ${compact ? "line-clamp-2" : "line-clamp-3"}`}
+          style={{ color: "var(--text-dim)" }}
+        >
+          {claim.display_text}
+        </p>
+      )}
 
       {!compact && (
         <div onClick={(e) => e.stopPropagation()} className="mb-3">
@@ -85,9 +82,13 @@ export default function ClaimCard({ claim, compact = false, linkable = true, id 
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <div onClick={(e) => e.stopPropagation()}>
-          <VoteButtons claim={claim} />
-        </div>
+        {isReply ? (
+          <div onClick={(e) => e.stopPropagation()}>
+            <VoteButtons claim={claim} />
+          </div>
+        ) : (
+          <ForAgainstBar forCount={claim.for_count || 0} againstCount={claim.against_count || 0} />
+        )}
         <div className="flex items-center gap-3 text-xs" style={{ color: "var(--text-faint)" }}>
           {!isReply && (
             <span className="flex items-center gap-1">
@@ -102,6 +103,24 @@ export default function ClaimCard({ claim, compact = false, linkable = true, id 
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function ForAgainstBar({ forCount, againstCount }) {
+  const total = forCount + againstCount;
+  const forPct = total > 0 ? (forCount / total) * 100 : 50;
+  return (
+    <div className="flex items-center gap-2 min-w-0" style={{ maxWidth: 160 }}>
+      <span className="text-xs font-semibold shrink-0" style={{ color: "var(--up)" }}>
+        {forCount}
+      </span>
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden flex" style={{ background: "var(--down-soft)", minWidth: 40 }}>
+        <div className="h-full" style={{ width: `${forPct}%`, background: "var(--up)" }} />
+      </div>
+      <span className="text-xs font-semibold shrink-0" style={{ color: "var(--down)" }}>
+        {againstCount}
+      </span>
     </div>
   );
 }

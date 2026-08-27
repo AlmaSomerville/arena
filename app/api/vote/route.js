@@ -24,6 +24,50 @@ export async function POST(req) {
 
   const supabase = getServiceClient();
 
+  const { data: claim, error: claimLookupError } = await supabase
+    .from("claims")
+    .select("id, parent_claim_id, stance")
+    .eq("id", claimId)
+    .maybeSingle();
+  if (claimLookupError) return NextResponse.json({ error: claimLookupError.message }, { status: 500 });
+  if (!claim) return NextResponse.json({ error: "That argument no longer exists." }, { status: 404 });
+
+  // Root arguments themselves aren't voted on — you pick a side (For /
+  // Against) instead, via /api/argument-sides.
+  if (!claim.parent_claim_id) {
+    return NextResponse.json(
+      { error: "Root arguments aren't voted on directly — pick a side instead." },
+      { status: 400 }
+    );
+  }
+
+  // Nuance responses are exempt from the side-lock and votable by anyone.
+  // For/Against responses can only be voted on by someone who has locked in
+  // the matching side on the root argument — this is the "numbing" rule
+  // that stops malicious pile-on downvoting from the opposing side.
+  if (claim.stance === "for" || claim.stance === "against") {
+    const { data: mySide, error: sideError } = await supabase
+      .from("argument_sides")
+      .select("side")
+      .eq("claim_id", claim.parent_claim_id)
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (sideError) return NextResponse.json({ error: sideError.message }, { status: 500 });
+
+    if (!mySide) {
+      return NextResponse.json(
+        { error: "Pick a side on this argument before voting on its responses." },
+        { status: 403 }
+      );
+    }
+    if (mySide.side !== claim.stance) {
+      return NextResponse.json(
+        { error: `You're on the ${mySide.side === "for" ? "For" : "Against"} team — you can watch the ${claim.stance === "for" ? "For" : "Against"} side, but you can't vote on it.` },
+        { status: 403 }
+      );
+    }
+  }
+
   const { data: existing, error: lookupError } = await supabase
     .from("votes")
     .select("*")
@@ -48,12 +92,12 @@ export async function POST(req) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: claim, error: claimError } = await supabase
+  const { data: updatedClaim, error: refetchError } = await supabase
     .from("claims")
     .select("id, score, upvotes, downvotes")
     .eq("id", claimId)
     .single();
-  if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 });
+  if (refetchError) return NextResponse.json({ error: refetchError.message }, { status: 500 });
 
-  return NextResponse.json({ claim, myVote });
+  return NextResponse.json({ claim: updatedClaim, myVote });
 }

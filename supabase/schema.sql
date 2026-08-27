@@ -248,3 +248,180 @@ create policy "public read recordings" on storage.objects
 drop policy if exists "public upload recordings" on storage.objects;
 create policy "public upload recordings" on storage.objects
   for insert with check (bucket_id = 'recordings');
+
+-- ============================================================================
+-- REDESIGN MIGRATION — topics, side-locking (For/Against teams), Rep/karma.
+-- Safe to run again on top of the original schema above: every statement
+-- below is idempotent (IF NOT EXISTS / IF EXISTS / ON CONFLICT guards), and
+-- existing rows are migrated in place rather than dropped.
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- Loosen the old guided-wizard columns. The posting flow no longer collects
+-- subject/dimension/scope/claim_type — replaced by a plain title + topic.
+-- The columns stay (so nothing already posted breaks), they're just no
+-- longer required for new rows.
+-- ----------------------------------------------------------------------------
+alter table public.claims alter column claim_type drop not null;
+alter table public.claims alter column subject_a drop not null;
+alter table public.claims alter column dimension drop not null;
+alter table public.claims alter column scope drop not null;
+
+-- The simplified flow types a plain title instead of composing one from
+-- wizard answers. `display_text` remains the field every existing UI
+-- component reads, so new posts write the same string into both.
+alter table public.claims add column if not exists title text;
+update public.claims set title = display_text where title is null;
+
+-- ----------------------------------------------------------------------------
+-- TOPICS — a fixed, curated list. Root arguments get exactly one; replies
+-- inherit their parent's topic implicitly (no column needed on replies).
+-- ----------------------------------------------------------------------------
+create table if not exists public.topics (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  label text not null,
+  sort_order integer not null default 0
+);
+
+alter table public.claims add column if not exists topic_id uuid references public.topics(id);
+create index if not exists claims_topic_idx on public.claims (topic_id);
+
+insert into public.topics (slug, label, sort_order) values
+  ('politics', 'Politics', 1),
+  ('history', 'History', 2),
+  ('philosophy', 'Philosophy', 3),
+  ('science', 'Science', 4),
+  ('technology', 'Technology', 5),
+  ('health', 'Health & Nutrition', 6),
+  ('food', 'Food & Drink', 7),
+  ('sports', 'Sports', 8),
+  ('pop_culture', 'Pop Culture', 9),
+  ('music', 'Music', 10),
+  ('movies_tv', 'Movies & TV', 11),
+  ('books', 'Books', 12),
+  ('relationships', 'Relationships', 13),
+  ('parenting', 'Parenting', 14),
+  ('money', 'Money & Finance', 15),
+  ('career', 'Career & Work', 16),
+  ('education', 'Education', 17),
+  ('religion', 'Religion & Spirituality', 18),
+  ('environment', 'Environment', 19),
+  ('law', 'Law & Justice', 20),
+  ('psychology', 'Psychology', 21),
+  ('travel', 'Travel', 22),
+  ('gaming', 'Gaming', 23),
+  ('ethics', 'Ethics', 24)
+on conflict (slug) do nothing;
+
+-- ----------------------------------------------------------------------------
+-- Reply stance: rename support/challenge -> for/against so the wording
+-- matches the new For/Against team model. Nuance is unchanged and, unlike
+-- for/against, is never subject to the side-lock below.
+-- ----------------------------------------------------------------------------
+update public.claims set stance = 'for' where stance = 'support';
+update public.claims set stance = 'against' where stance = 'challenge';
+alter table public.claims drop constraint if exists claims_stance_check;
+alter table public.claims add constraint claims_stance_check check (stance in ('for', 'against', 'nuance'));
+
+-- ----------------------------------------------------------------------------
+-- ARGUMENT SIDES — the one-time, permanent "team" a user picks on a root
+-- argument (via the end-of-video For/Against/Nuance overlay, or implicitly
+-- by posting a for/against response to it). This is intentionally separate
+-- from `votes`: it doesn't score the argument, it locks which side of the
+-- argument's replies that user is allowed to vote on. Root arguments no
+-- longer take plain up/down votes — their "score" is this For/Against split.
+-- ----------------------------------------------------------------------------
+create table if not exists public.argument_sides (
+  id uuid primary key default gen_random_uuid(),
+  claim_id uuid not null references public.claims(id) on delete cascade, -- always a ROOT argument id
+  user_id uuid not null references public.users(id) on delete cascade,
+  side text not null check (side in ('for', 'against')),
+  created_at timestamptz not null default now(),
+  unique (claim_id, user_id)
+);
+
+create index if not exists argument_sides_claim_idx on public.argument_sides (claim_id);
+create index if not exists argument_sides_user_idx on public.argument_sides (user_id);
+
+alter table public.claims add column if not exists for_count integer not null default 0;
+alter table public.claims add column if not exists against_count integer not null default 0;
+
+create or replace function public.recalc_argument_sides(p_claim_id uuid)
+returns void language plpgsql as $$
+begin
+  update public.claims set
+    for_count = coalesce((select count(*) from public.argument_sides where claim_id = p_claim_id and side = 'for'), 0),
+    against_count = coalesce((select count(*) from public.argument_sides where claim_id = p_claim_id and side = 'against'), 0)
+  where id = p_claim_id;
+end;
+$$;
+
+create or replace function public.on_argument_side_change()
+returns trigger language plpgsql as $$
+begin
+  if (tg_op = 'DELETE') then
+    perform public.recalc_argument_sides(old.claim_id);
+    return old;
+  else
+    perform public.recalc_argument_sides(new.claim_id);
+    return new;
+  end if;
+end;
+$$;
+
+drop trigger if exists argument_sides_after_change on public.argument_sides;
+create trigger argument_sides_after_change
+after insert or update or delete on public.argument_sides
+for each row execute function public.on_argument_side_change();
+
+-- ----------------------------------------------------------------------------
+-- REP / KARMA — 1 point per unique video watched to completion. The unique
+-- constraint on (user_id, claim_id) is what stops someone farming Rep by
+-- replaying the same video; re-watching something already logged is a no-op.
+-- Deliberately simple for now — rules and figures can change later.
+-- ----------------------------------------------------------------------------
+alter table public.users add column if not exists rep integer not null default 0;
+
+create table if not exists public.video_watches (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  claim_id uuid not null references public.claims(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, claim_id)
+);
+
+create index if not exists video_watches_user_idx on public.video_watches (user_id);
+
+create or replace function public.on_watch_insert()
+returns trigger language plpgsql as $$
+begin
+  update public.users set rep = rep + 1 where id = new.user_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists video_watches_after_insert on public.video_watches;
+create trigger video_watches_after_insert
+after insert on public.video_watches
+for each row execute function public.on_watch_insert();
+
+-- ----------------------------------------------------------------------------
+-- RLS for the three new tables — same permissive-but-explicit pattern as
+-- everything else in this trusted, no-password, friends/family app.
+-- ----------------------------------------------------------------------------
+alter table public.topics enable row level security;
+drop policy if exists "public read topics" on public.topics;
+create policy "public read topics" on public.topics for select using (true);
+
+alter table public.argument_sides enable row level security;
+drop policy if exists "public read argument_sides" on public.argument_sides;
+create policy "public read argument_sides" on public.argument_sides for select using (true);
+drop policy if exists "public insert argument_sides" on public.argument_sides;
+create policy "public insert argument_sides" on public.argument_sides for insert with check (true);
+
+alter table public.video_watches enable row level security;
+drop policy if exists "public read video_watches" on public.video_watches;
+create policy "public read video_watches" on public.video_watches for select using (true);
+drop policy if exists "public insert video_watches" on public.video_watches;
+create policy "public insert video_watches" on public.video_watches for insert with check (true);

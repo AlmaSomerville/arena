@@ -1,27 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { getReplySteps, composeReplyText, isStepValid } from "@/lib/claimWizard";
+import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useIdentity } from "@/components/IdentityProvider";
 import WizardShell from "@/components/wizard/WizardShell";
-import StepField from "@/components/wizard/StepField";
 import ReferencesEditor from "@/components/wizard/ReferencesEditor";
 import RecordStep from "@/components/RecordStep";
 
+const SCREENS = ["details", "references", "record"];
+
+const STANCES = [
+  { id: "for", label: "For", hint: "Backs the root argument", color: "var(--up)" },
+  { id: "against", label: "Against", hint: "Pushes back on it", color: "var(--down)" },
+  { id: "nuance", label: "Add nuance", hint: "Caveat or complication — visible to everyone", color: "var(--accent)" },
+];
+
 export default function ReplyPage() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
+  const presetStance = searchParams.get("stance");
   const router = useRouter();
   const { user, requireIdentity } = useIdentity();
 
   const [parent, setParent] = useState(null);
   const [loadError, setLoadError] = useState("");
-  const [answers, setAnswers] = useState({ caveats: [] });
+  const [stance, setStance] = useState(
+    ["for", "against", "nuance"].includes(presetStance) ? presetStance : null
+  );
+  const [title, setTitle] = useState("");
   const [screenIndex, setScreenIndex] = useState(0);
-  const [reviewText, setReviewText] = useState("");
-  const [reviewInitialized, setReviewInitialized] = useState(false);
   const [references, setReferences] = useState([]);
-  const [mediaKind, setMediaKind] = useState("audio");
+  const [mediaKind, setMediaKind] = useState("video");
   const [media, setMedia] = useState(null);
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState("");
@@ -33,24 +42,10 @@ export default function ReplyPage() {
         if (d.error) setLoadError(d.error);
         else setParent(d.claim);
       })
-      .catch(() => setLoadError("Couldn't load that claim."));
+      .catch(() => setLoadError("Couldn't load that argument."));
   }, [id]);
 
-  const fieldSteps = useMemo(() => (parent ? getReplySteps(parent) : []), [parent]);
-
-  const screens = useMemo(() => {
-    const s = fieldSteps.map((step) => ({ kind: "field", step }));
-    s.push({ kind: "review" });
-    s.push({ kind: "references" });
-    s.push({ kind: "record" });
-    return s;
-  }, [fieldSteps]);
-
-  const current = screens[screenIndex];
-
-  function updateAnswer(key, val) {
-    setAnswers((a) => ({ ...a, [key]: val }));
-  }
+  const current = SCREENS[screenIndex];
 
   function goBack() {
     if (screenIndex === 0) {
@@ -60,21 +55,10 @@ export default function ReplyPage() {
     setScreenIndex((i) => Math.max(i - 1, 0));
   }
 
-  function enterScreen(nextIndex) {
-    const next = screens[nextIndex];
-    if (next?.kind === "review" && !reviewInitialized) {
-      setReviewText(composeReplyText(parent, answers));
-      setReviewInitialized(true);
-    }
-    setScreenIndex(nextIndex);
-  }
-
   function canProceed() {
-    if (!current) return false;
-    if (current.kind === "field") return isStepValid(current.step, answers);
-    if (current.kind === "review") return reviewText.trim().length > 0;
-    if (current.kind === "references") return true;
-    if (current.kind === "record") return !!media;
+    if (current === "details") return !!stance;
+    if (current === "references") return true;
+    if (current === "record") return !!media;
     return true;
   }
 
@@ -89,12 +73,8 @@ export default function ReplyPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stance: answers.stance,
-          addresses: answers.addresses,
-          dimension: answers.dimension,
-          scope: answers.scope,
-          caveats: answers.caveats || [],
-          displayText: reviewText,
+          stance,
+          title,
           references,
           mediaUrl: media.mediaUrl,
           mediaType: media.mediaType,
@@ -118,19 +98,19 @@ export default function ReplyPage() {
     );
   }
 
-  if (!parent || !current) {
+  if (!parent) {
     return <div className="card p-6 h-64 animate-pulse mt-4" />;
   }
 
   return (
     <WizardShell
       step={screenIndex}
-      totalSteps={screens.length}
+      totalSteps={SCREENS.length}
       onBack={goBack}
       footer={
-        current.kind !== "record" ? (
+        current !== "record" ? (
           <button
-            onClick={() => enterScreen(screenIndex + 1)}
+            onClick={() => setScreenIndex((i) => i + 1)}
             disabled={!canProceed()}
             className="btn btn-primary w-full py-3.5"
           >
@@ -154,27 +134,51 @@ export default function ReplyPage() {
         Replying to <span className="font-semibold" style={{ color: "var(--text)" }}>{parent.arena_name}</span>
       </div>
 
-      {current.kind === "field" && <StepField step={current.step} answers={answers} onChange={updateAnswer} />}
-
-      {current.kind === "review" && (
+      {current === "details" && (
         <div>
-          <h2 className="font-display font-semibold text-xl mb-1.5">Here&apos;s your reply</h2>
+          <h2 className="font-display font-semibold text-xl mb-1.5">Where do you stand?</h2>
           <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
-            Tweak the wording if you like — keep the specifics.
+            For and Against replies lock you to that side of this argument &mdash; you&apos;ll be able to watch the
+            other side, but not vote on it. Nuance stays open to everyone.
           </p>
-          <textarea
+          <div className="flex flex-col gap-2.5 mb-6">
+            {STANCES.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setStance(s.id)}
+                className="card card-hover text-left p-4"
+                style={{
+                  borderColor: stance === s.id ? s.color : "var(--border)",
+                  background: stance === s.id ? "var(--accent-soft)" : undefined,
+                }}
+              >
+                <p className="font-display font-semibold mb-0.5" style={{ color: stance === s.id ? s.color : undefined }}>
+                  {s.label}
+                </p>
+                <p className="text-sm" style={{ color: "var(--text-dim)" }}>
+                  {s.hint}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          <label className="text-xs font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: "var(--text-faint)" }}>
+            Short title (optional)
+          </label>
+          <input
             className="input"
-            rows={4}
-            value={reviewText}
+            placeholder="What's the headline of your response?"
+            maxLength={140}
             autoCapitalize="sentences"
-            onChange={(e) => setReviewText(e.target.value)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
       )}
 
-      {current.kind === "references" && <ReferencesEditor references={references} onChange={setReferences} />}
+      {current === "references" && <ReferencesEditor references={references} onChange={setReferences} />}
 
-      {current.kind === "record" && (
+      {current === "record" && (
         <div>
           <h2 className="font-display font-semibold text-xl mb-1.5">Record it</h2>
           <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>

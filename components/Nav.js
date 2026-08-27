@@ -60,7 +60,7 @@ export default function Nav() {
               <div className="px-2 py-1.5 mb-1">
                 <p className="text-sm font-semibold">{user.nickname}</p>
                 <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-                  In the arena
+                  {user.rep ?? 0} Rep
                 </p>
               </div>
             ) : (
@@ -71,6 +71,9 @@ export default function Nav() {
                 </p>
               </div>
             )}
+            <Link href="/settings" onClick={() => setMenuOpen(false)} className="btn btn-ghost w-full text-sm mb-1">
+              Settings
+            </Link>
             <button
               className="btn btn-ghost w-full text-sm"
               onClick={() => {

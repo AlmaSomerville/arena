@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import { getServiceClient } from "@/lib/supabase";
 import { applyFilters, applyOrder, parseFilters } from "@/lib/queryFilters";
 import { UID_COOKIE } from "@/lib/identity";
-import { composeReplyText } from "@/lib/claimWizard";
-import { generateReplyName } from "@/lib/arenaNames";
+import { cap } from "@/lib/text";
 
 const CLAIM_SELECT =
   "*, users:user_id ( nickname, avatar_color ), claim_references ( id, url, label ), votes ( value, user_id )";
@@ -43,49 +42,65 @@ export async function POST(req, { params }) {
   const supabase = getServiceClient();
   const { data: parent, error: parentError } = await supabase
     .from("claims")
-    .select("*")
+    .select("id, parent_claim_id")
     .eq("id", id)
     .maybeSingle();
   if (parentError) return NextResponse.json({ error: parentError.message }, { status: 500 });
-  if (!parent) return NextResponse.json({ error: "That claim no longer exists." }, { status: 404 });
+  if (!parent) return NextResponse.json({ error: "That argument no longer exists." }, { status: 404 });
+  if (parent.parent_claim_id) {
+    return NextResponse.json({ error: "Replies can only be posted directly on a root argument." }, { status: 400 });
+  }
 
-  const { stance, addresses, dimension, scope, caveats, references, mediaUrl, mediaType, mediaDurationSeconds } =
-    body || {};
+  const { stance, title, references, mediaUrl, mediaType, mediaDurationSeconds } = body || {};
 
-  if (!stance || !addresses || !dimension) {
-    return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+  if (!["for", "against", "nuance"].includes(stance)) {
+    return NextResponse.json({ error: "Pick For, Against, or Nuance." }, { status: 400 });
   }
   if (!mediaUrl) {
     return NextResponse.json({ error: "A recording is required before posting." }, { status: 400 });
   }
 
-  const displayText = composeReplyText(parent, {
-    stance,
-    addresses,
-    dimension,
-    scope,
-    caveats: caveats || [],
-  });
-  const arenaName = generateReplyName({ stance, subjectA: parent.subject_a, seed: id });
+  // Posting a For/Against response commits you to that team on the argument
+  // (if you haven't picked one yet). Posting the opposite of a side you've
+  // already locked in is rejected — Nuance never touches the side-lock.
+  if (stance === "for" || stance === "against") {
+    const { data: existingSide, error: sideLookupError } = await supabase
+      .from("argument_sides")
+      .select("*")
+      .eq("claim_id", id)
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (sideLookupError) return NextResponse.json({ error: sideLookupError.message }, { status: 500 });
+
+    if (existingSide && existingSide.side !== stance) {
+      return NextResponse.json(
+        { error: `You're on the ${existingSide.side === "for" ? "For" : "Against"} team for this argument — you can't post an ${stance === "for" ? "For" : "Against"} response.` },
+        { status: 409 }
+      );
+    }
+    if (!existingSide) {
+      const { error: sideInsertError } = await supabase
+        .from("argument_sides")
+        .insert({ claim_id: id, user_id: uid, side: stance });
+      if (sideInsertError) return NextResponse.json({ error: sideInsertError.message }, { status: 500 });
+    }
+  }
+
+  const trimmedTitle = (title || "").trim();
+  const finalTitle = trimmedTitle ? cap(trimmedTitle) : null;
 
   const { data: reply, error } = await supabase
     .from("claims")
     .insert({
       user_id: uid,
       parent_claim_id: id,
-      claim_type: parent.claim_type,
-      subject_a: parent.subject_a,
-      subject_b: parent.subject_b,
-      direction: parent.direction,
-      dimension,
-      scope: scope || parent.scope,
-      caveats: caveats || [],
       stance,
-      addresses,
-      arena_name: arenaName,
-      display_text: displayText,
+      title: finalTitle,
+      arena_name: finalTitle || (stance === "nuance" ? "A nuance" : stance === "for" ? "A For response" : "An Against response"),
+      display_text: finalTitle || "",
+      subject_a: finalTitle || "response", // kept populated for backward-compat with the not-null legacy column
       media_url: mediaUrl,
-      media_type: mediaType || "audio",
+      media_type: mediaType || "video",
       media_duration_seconds: mediaDurationSeconds || null,
     })
     .select(CLAIM_SELECT)
