@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import ClaimCard from "@/components/ClaimCard";
+import FeedThumbnailCard from "@/components/FeedThumbnailCard";
 import FilterBar from "@/components/FilterBar";
+import BrowsePrompt from "@/components/BrowsePrompt";
+import { getPreferredTopics, getSkipTopicPrompt } from "@/lib/preferences";
 
 export default function FeedPage() {
   const [order, setOrder] = useState("newest");
@@ -11,9 +13,15 @@ export default function FeedPage() {
   const [claims, setClaims] = useState(null);
   const [error, setError] = useState("");
 
+  // Seeded from localStorage via lazy initializers, this is a one-time read
+  // of an external value at mount, not a subscription.
+  const [preferred, setPreferred] = useState(() => getPreferredTopics());
+  const [showPrompt, setShowPrompt] = useState(() => !getSkipTopicPrompt());
+
   useEffect(() => {
     const params = new URLSearchParams({ order });
     if (filters.length) params.set("filters", filters.join(","));
+    if (preferred.length) params.set("preferred", preferred.join(","));
     fetch(`/api/claims?${params.toString()}`)
       .then((r) => r.json())
       .then((d) => {
@@ -21,7 +29,7 @@ export default function FeedPage() {
         else setClaims(d.claims);
       })
       .catch(() => setError("Couldn't load the feed. Check your connection."));
-  }, [order, filters]);
+  }, [order, filters, preferred]);
 
   function handleOrderChange(v) {
     setClaims(null);
@@ -35,6 +43,17 @@ export default function FeedPage() {
 
   return (
     <div>
+      {showPrompt && (
+        <BrowsePrompt
+          initialTopics={preferred}
+          onSet={(topics) => {
+            setPreferred(topics);
+            setShowPrompt(false);
+          }}
+          onDismiss={() => setShowPrompt(false)}
+        />
+      )}
+
       <div className="mb-6 pt-2">
         <h1 className="font-display font-bold text-3xl mb-1.5">The Feed</h1>
         <p className="text-sm" style={{ color: "var(--text-dim)" }}>
@@ -67,9 +86,9 @@ export default function FeedPage() {
       )}
 
       {claims && claims.length > 0 && (
-        <div className="flex flex-col gap-3.5">
+        <div className="flex flex-col gap-1">
           {claims.map((c) => (
-            <ClaimCard key={c.id} claim={c} compact />
+            <FeedThumbnailCard key={c.id} claim={c} />
           ))}
         </div>
       )}
@@ -81,7 +100,7 @@ function FeedSkeleton() {
   return (
     <div className="flex flex-col gap-3.5">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="card p-5 h-36 animate-pulse" style={{ background: "var(--bg-card)" }} />
+        <div key={i} className="card p-5 h-24 animate-pulse" style={{ background: "var(--bg-card)" }} />
       ))}
     </div>
   );

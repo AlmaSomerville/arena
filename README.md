@@ -123,25 +123,28 @@ lib/
   supabase.js                   - Supabase client helpers
 components/
   GatedMediaPlayer.js           - the forced-watch player with the end-of-video overlay
+  FeedThumbnailCard.js          - the feed's thumbnail-left, details-right row
+  BrowsePrompt.js                - the startup "what do you feel like browsing?" modal
   wizard/                       - the guided posting flow's screens (StepField, ReferencesEditor, WizardShell)
   ...                            - feed cards, vote buttons, recorder, nav, etc.
 supabase/schema.sql              - the entire database schema (idempotent, safe to re-run)
 ```
 
-## What's built vs. what's next
+## What's built
 
-**Phase 1** (data model, the simplified posting flow, side-locked voting,
-and Rep) and **Phase 2** (the guided claim wizard is back, plus the gated
-video player: no forward-scrubbing, and a For/Against/Nuance overlay that
-fades in right as a video ends and stays until you act on it or leave the
-page) are both live. What's left:
+All four phases of the redesign are live:
 
-- **Phase 3** - a YouTube-style scrollable feed (thumbnail left, details
-  right) in place of the current card feed.
-- **Phase 4** - the startup "What do you feel like browsing?" prompt with
-  rotating phrasings and a topic picker. Settings already lets you set
-  preferred topics and the ask-me-again toggle by hand in the meantime,
-  the feed already soft-prioritizes by them via `/api/claims?preferred=`.
+- **Phase 1**: the data model (topics, For/Against side-locking, Rep),
+  the posting and reply flows, and side-locked voting.
+- **Phase 2**: the guided claim wizard, and the gated video player, no
+  forward-scrubbing, plus a For/Against/Nuance overlay that fades in right
+  as a video ends and stays until you act on it or leave the page.
+- **Phase 3**: the main feed's YouTube-style layout, a thumbnail on the
+  left, title and details to the right.
+- **Phase 4**: the startup "what do you feel like browsing?" prompt, with
+  rotating phrasings and a topic picker (max 10). It asks every time
+  unless turned off in Settings, and the topics you pick soft prioritize
+  the feed rather than filtering it out, so the feed never goes empty.
 
 ## Extending it
 
