@@ -2,17 +2,18 @@
 
 Stake a claim. Back it up. Let the arena decide.
 
-A tiny hobby app for friends and family: instead of typing a claim, you're
-walked through a few pointed questions that force it to be specific and
-debatable ("cheese is better than meat" becomes "cheese produces better
-long-term cardiovascular outcomes than meat, for the average healthy adult
-eating in moderation — doesn't cover people with dairy allergies"). Add
-references if you've got them, record yourself making the case (up to 30
-minutes, audio or video), and it posts to the feed. Anyone can reply — same
-guided process, scoped to a specific part of the claim — and anyone can
-upvote or downvote any claim or reply. The feed and every claim's replies
-can be sorted and filtered a bunch of different ways (highest/lowest voted,
-most watched, has references, by claim type, and more).
+A tiny hobby app for friends and family: post an argument — a short title,
+a topic, and a recording (up to 30 minutes, audio or video) making your
+case, with as many references as you want to back it up. Anyone can reply
+**For**, **Against**, or with a **Nuance** — For/Against locks you to that
+side of the argument permanently (you can still watch the other side, you
+just can't vote on its replies, which keeps malicious pile-on downvoting
+out of the picture), while Nuance stays open to everyone regardless of
+side. Every root argument shows a live For/Against split; every claim's
+replies can be sorted and filtered a bunch of different ways
+(highest/lowest voted, most watched, has references, and more). Watching a
+video through to the end earns you a point of Rep — visible in Settings,
+a bit like Reddit Karma.
 
 No passwords — just pick a nickname the first time you show up.
 
@@ -28,7 +29,7 @@ group.
 
 1. Go to [supabase.com](https://supabase.com), sign up, and create a new project (pick any name/region, and a database password — you won't need the password day-to-day).
 2. Once it's ready, open **SQL Editor** in the left sidebar → **New query**.
-3. Paste in the entire contents of [`supabase/schema.sql`](./supabase/schema.sql) from this repo and click **Run**. This creates every table, the vote/reply/reference counters, and the `recordings` storage bucket + its access policies, all in one go.
+3. Paste in the entire contents of [`supabase/schema.sql`](./supabase/schema.sql) from this repo and click **Run**. This creates every table, the vote/reply/reference/side-pick/rep counters, the fixed topic list, and the `recordings` storage bucket + its access policies, all in one go. The whole file is safe to re-run any time — if you'd already set up an earlier version of The Arena, just re-paste and re-run the updated file and it'll add the new pieces (topics, For/Against side-locking, Rep) without touching your existing data.
 4. Open **Storage** in the sidebar and confirm a bucket called `recordings` now exists and is marked **Public** (the SQL script creates it, but it's worth eyeballing).
 5. Open **Settings → API**. You'll need three values from this page in the next step:
    - **Project URL**
@@ -105,24 +106,46 @@ your friends go wild with it:
 
 ```
 app/
-  page.js                    — the main feed
-  new/page.js                — the "stake a claim" wizard
-  claim/[id]/page.js         — a single claim + its replies
-  claim/[id]/reply/page.js   — the reply wizard
-  api/                       — route handlers (claims, replies, votes, views, identity)
+  page.js                     — the main feed
+  new/page.js                 — the "stake a claim" posting flow (title + topic + references + recording)
+  claim/[id]/page.js          — a single argument: pick a side, watch, browse replies
+  claim/[id]/reply/page.js    — the reply flow (For / Against / Nuance + recording)
+  settings/page.js            — nickname, Rep, preferred topics, browse-prompt toggle
+  api/                        — route handlers (claims, replies, votes, views, identity,
+                                 topics, argument-sides, watch-complete)
 lib/
-  claimWizard.js             — the guided question flow + sentence composer + vague-word check
-  arenaNames.js              — generates each claim's fun display title
-  sortOptions.js             — shared sort/filter definitions
-  supabase.js                — Supabase client helpers
-components/                  — UI (feed cards, vote buttons, recorder, wizard steps, etc.)
-supabase/schema.sql          — the entire database schema, run once in Supabase
+  topics.js                   — the fixed topic list + rotating browse-prompt phrasings
+  preferences.js              — localStorage helpers for preferred topics / prompt opt-out
+  text.js                     — small text helper (capitalize first letter)
+  sortOptions.js               — shared sort/filter definitions
+  supabase.js                  — Supabase client helpers
+components/                   — UI (feed cards, vote buttons, recorder, posting-flow shell, etc.)
+supabase/schema.sql            — the entire database schema (idempotent — safe to re-run)
 ```
+
+## What's built vs. what's next
+
+This is **Phase 1** of a structural redesign (data model, posting/reply
+flows, side-locked voting, and Rep are all live). A few pieces from the
+fuller vision are intentionally deferred so each phase ships as a working
+increment:
+
+- **Phase 2** — a custom video player that disables forward-scrubbing and
+  shows a persistent For/Against/Nuance overlay right as a video ends
+  (wired to `/api/watch-complete` and `/api/argument-sides`, both already
+  built). Right now, picking a side happens via buttons on the claim page
+  instead of an end-of-video overlay.
+- **Phase 3** — a YouTube-style scrollable feed (thumbnail left, details
+  right) in place of the current card feed.
+- **Phase 4** — the startup "What do you feel like browsing?" prompt with
+  rotating phrasings and a topic picker. Settings already lets you set
+  preferred topics and the ask-me-again toggle by hand in the meantime —
+  the feed already soft-prioritizes by them via `/api/claims?preferred=`.
 
 ## Extending it
 
-Some ideas if you want to keep going: edit/delete your own claims, push
-notifications on new replies, a leaderboard of most-staked or
-highest-scoring claimants, transcription of recordings (e.g. via a
-speech-to-text API) so claims are searchable and readable, and a "featured
-duel" section on the feed for whatever's getting the most action.
+Some ideas if you want to keep going, beyond the phases above: edit/delete
+your own claims, push notifications on new replies, a leaderboard by Rep,
+transcription of recordings (e.g. via a speech-to-text API) so arguments
+are searchable and readable, and a "featured duel" section on the feed for
+whatever's getting the most action.
