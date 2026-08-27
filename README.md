@@ -2,154 +2,58 @@
 
 Stake a claim. Back it up. Let the arena decide.
 
-A tiny hobby app for friends and family: instead of typing a claim, you're
-walked through a few pointed questions that force it to be specific and
-debatable, pick a topic, add as many references as you want, and record
-yourself making the case (up to 30 minutes, audio or video). Anyone can
-reply **For**, **Against**, or with a **Nuance**. For/Against locks you to
-that side of the argument permanently (you can still watch the other side,
-you just can't vote on its replies, which keeps malicious pile-on
-downvoting out of the picture), while Nuance stays open to everyone
-regardless of side. Watching a video through to the end earns you a point
-of Rep, visible in Settings, and unlocks a For/Against/Nuance overlay right
-on the video. Every root argument shows a live For/Against split, and
-every claim's replies can be sorted and filtered a bunch of different ways
-(highest/lowest voted, most watched, has references, and more).
+Made this for me and my friends/family to argue on properly instead of in a group chat where everything gets lost after 10 messages. Instead of just typing a claim, it walks you through a few questions to make you actually be specific about what you're arguing (no more "cats are just better" - what does "better" even mean), you pick a topic, chuck in some links if you've got receipts, and record yourself making the case, audio or video, up to 30 min.
 
-No passwords - just pick a nickname the first time you show up.
+People reply For, Against, or Nuance. Once you pick For or Against on something you're locked to that side for good (you can still watch the other side's stuff, just can't vote on their replies - stops people ganging up and downvoting the other team into oblivion). Nuance replies are open season for everyone regardless of side. Watch a video the whole way through and you get a point of Rep (shows up in Settings), plus it pops up a For/Against/Nuance thing right on the video so you can react immediately instead of having to scroll down and find the buttons.
 
-## Stack
+No passwords, just pick a nickname the first time and you're in.
 
-- **Next.js** (App Router, JavaScript, Tailwind v4) - the app itself, deployed on **Vercel**
-- **Supabase** - free Postgres database + file storage for the recordings
+## stack
 
-Both have generous free tiers, which is all this needs for a friends/family
-group.
+Next.js + Tailwind on the frontend, Supabase doing the database and file storage for recordings. Deployed on Vercel. All free tier, which is plenty for a friends group unless you've got like 500 friends who all record 30 min videos, in which case, good for you I guess.
 
-## 1. Create the Supabase project
+## setting it up
 
-1. Go to [supabase.com](https://supabase.com), sign up, and create a new project (pick any name/region, and a database password - you won't need the password day-to-day).
-2. Once it's ready, open **SQL Editor** in the left sidebar → **New query**.
-3. Paste in the entire contents of [`supabase/schema.sql`](./supabase/schema.sql) from this repo and click **Run**. This creates every table, the vote/reply/reference/side-pick/rep counters, the fixed topic list, and the `recordings` storage bucket + its access policies, all in one go. The whole file is safe to re-run any time - if you'd already set up an earlier version of The Arena, just re-paste and re-run the updated file and it'll add the new pieces (topics, For/Against side-locking, Rep) without touching your existing data.
-4. Open **Storage** in the sidebar and confirm a bucket called `recordings` now exists and is marked **Public** (the SQL script creates it, but it's worth eyeballing).
-5. Open **Settings → API**. You'll need three values from this page in the next step:
-   - **Project URL**
-   - **anon public** key
-   - **service_role** key (click "Reveal" - keep this one secret, it bypasses all access rules)
+You'll need a Supabase account and a Vercel account, both free.
 
-## 2. Configure environment variables
+**Supabase first:**
 
-Copy the example file and fill in the three values from above:
+1. Go make an account at supabase.com and start a new project (name/region don't matter, just remember the DB password even though you probably won't need it again)
+2. Once it spins up, go to SQL Editor > New query, and paste in everything from `supabase/schema.sql` in this repo. Hit run. This sets up all the tables, the vote counters, the topic list, storage bucket, all of it in one shot. It's safe to re-run this later too if I push updates to the schema, it won't nuke your existing data.
+3. Check Storage in the sidebar, there should be a `recordings` bucket and it should say Public.
+4. Go to Settings > API and grab three things - the Project URL, the anon public key, and the service_role key (you have to click reveal for that last one, and don't put that one anywhere public, it skips all the security rules)
 
-```bash
+**Then locally:**
+
+```
 cp .env.local.example .env.local
 ```
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-secret-key
-```
+and fill in those 3 values in there. Then:
 
-## 3. Run it locally
-
-```bash
+```
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Recording requires
-microphone (and camera, for video) permissions, which most browsers only
-grant on `localhost` or `https://` - both work fine.
+localhost:3000 and you're good. Heads up, recording needs mic/camera permission which browsers only allow on localhost or a real https site, so this is fine either way.
 
-## 4. Push to GitHub
+**Getting it online:**
 
-```bash
-git add -A
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/the-arena.git
-git push -u origin main
-```
+Push the repo to GitHub, then go to vercel.com/new and import it. When it asks, add the same 3 env vars from your .env.local. Deploy. It'll give you a vercel.app link, send that to whoever. Every time you push to main it redeploys on its own after that.
 
-(Create the empty repo on GitHub first if you haven't - no README/license needed there, this project already has one.)
+## heads up about the 30 min recordings
 
-## 5. Deploy on Vercel
+Supabase's free storage is 1GB. Audio recordings are small, maybe a MB a minute so a full 30 min audio post is like 30MB, no big deal. Video is a totally different story though, a 30 min video can be 150-300MB easily, so you'll chew through free storage way faster if people go video-heavy. If it fills up, uploads just start failing until you clear old stuff out of Storage in the Supabase dashboard (or pay them). If this actually becomes a problem, easiest fix is just nudging people to audio (it already defaults to audio, video's opt in) or turning down the max recording length in the record component.
 
-1. Go to [vercel.com/new](https://vercel.com/new) and import the GitHub repo you just pushed.
-2. In the import screen, expand **Environment Variables** and add the same three keys from your `.env.local`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-3. Click **Deploy**. Vercel's free (Hobby) tier is enough for this.
-4. Share the resulting `*.vercel.app` URL with whoever you want testing it.
+## what's in here
 
-Any time you push to `main`, Vercel redeploys automatically.
+- `app/` - pages, mainly the feed, the posting wizard, the argument detail page, settings
+- `app/api/` - the backend routes (claims, votes, replies, etc)
+- `lib/` - the wizard logic, topic list, sort/filter stuff, supabase client
+- `components/` - the recorder, the video player w/ the forced watch + overlay, feed cards, nav, etc
+- `supabase/schema.sql` - the whole db schema, re-runnable any time
 
-## A note on the 30-minute recordings
+## random ideas if someone wants to keep building on this
 
-Recordings can run up to 30 minutes, audio or video. Worth knowing before
-your friends go wild with it:
-
-- Supabase's free tier gives you **1 GB of file storage**. Audio (webm/opus)
-  runs roughly 1 MB per minute, so a full 30-minute audio claim is
-  ~30 MB - you can fit a few dozen of those comfortably. **Video is much
-  bigger** - a 30-minute video recording can easily be 150-300 MB, which
-  eats your free storage in just a handful of posts.
-- If storage fills up, new recordings will fail to upload. You'd need to
-  either delete old files from **Storage → recordings** in the Supabase
-  dashboard, or upgrade Supabase's plan.
-- If this becomes a real constraint, the easiest fix is nudging people
-  toward audio by default (the recorder already defaults to audio, video is
-  opt-in) or lowering `MAX_SECONDS` in `components/RecordStep.js`.
-
-## Project structure
-
-```
-app/
-  page.js                     - the main feed
-  new/page.js                 - the "stake a claim" wizard (guided questions + topic + references + recording)
-  claim/[id]/page.js          - a single argument: gated video, pick a side, browse replies
-  claim/[id]/reply/page.js    - the reply flow (For / Against / Nuance + recording)
-  settings/page.js            - nickname, Rep, preferred topics, browse-prompt toggle
-  api/                        - route handlers (claims, replies, votes, views, identity,
-                                 topics, argument-sides, watch-complete)
-lib/
-  claimWizard.js               - the guided question flow + sentence composer + vague-word check
-  topics.js                    - the fixed topic list + rotating browse-prompt phrasings
-  preferences.js                - localStorage helpers for preferred topics / prompt opt-out
-  text.js                       - small text helper (capitalize first letter)
-  sortOptions.js                - shared sort/filter definitions
-  supabase.js                   - Supabase client helpers
-components/
-  GatedMediaPlayer.js           - the forced-watch player with the end-of-video overlay
-  FeedThumbnailCard.js          - the feed's thumbnail-left, details-right row
-  BrowsePrompt.js                - the startup "what do you feel like browsing?" modal
-  wizard/                       - the guided posting flow's screens (StepField, ReferencesEditor, WizardShell)
-  ...                            - feed cards, vote buttons, recorder, nav, etc.
-supabase/schema.sql              - the entire database schema (idempotent, safe to re-run)
-```
-
-## What's built
-
-All four phases of the redesign are live:
-
-- **Phase 1**: the data model (topics, For/Against side-locking, Rep),
-  the posting and reply flows, and side-locked voting.
-- **Phase 2**: the guided claim wizard, and the gated video player, no
-  forward-scrubbing, plus a For/Against/Nuance overlay that fades in right
-  as a video ends and stays until you act on it or leave the page.
-- **Phase 3**: the main feed's YouTube-style layout, a thumbnail on the
-  left, title and details to the right.
-- **Phase 4**: the startup "what do you feel like browsing?" prompt, with
-  rotating phrasings and a topic picker (max 10). It asks every time
-  unless turned off in Settings, and the topics you pick soft prioritize
-  the feed rather than filtering it out, so the feed never goes empty.
-
-## Extending it
-
-Some ideas if you want to keep going, beyond the phases above: edit/delete
-your own claims, push notifications on new replies, a leaderboard by Rep,
-transcription of recordings (e.g. via a speech-to-text API) so arguments
-are searchable and readable, and a "featured duel" section on the feed for
-whatever's getting the most action.
+edit/delete your own posts (currently can't, oops), notifications when someone replies to you, a leaderboard for Rep, maybe transcribing recordings so you can actually search/read old arguments instead of rewatching a 20 min video to remember what someone said, a "hot right now" spot on the feed for whatever's getting the most replies.
